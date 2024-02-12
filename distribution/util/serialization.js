@@ -1,5 +1,8 @@
-// trieve all gobal functions
-function trieveGlobalFuncMap(obj, map = new Map(), visited = new Set()) {
+// retrieve all gobal functions
+function retrieveGlobalFuncMap(obj, map = new Map(),
+    visited = new Set(),
+    targets = new Set(['String', 'Number', 'Boolean',
+      'Object', 'Array', 'RegExp', 'Function', 'Date', 'console'])) {
   for (const key of Object.getOwnPropertyNames(obj)) {
     const value = obj[key];
     if (visited.has(key)) {
@@ -15,7 +18,9 @@ function trieveGlobalFuncMap(obj, map = new Map(), visited = new Set()) {
       map.set(key, value);
     }
     if (typeof(value) === 'object') {
-      trieveGlobalFuncMap(value, map, visited);
+      if (targets.has(key)) {
+        retrieveGlobalFuncMap(value, map, visited);
+      }
     }
     visited.add(key);
   }
@@ -24,8 +29,7 @@ function trieveGlobalFuncMap(obj, map = new Map(), visited = new Set()) {
 
 
 function serialize(object, seenObjects = new Map(), path = '') {
-  let globalFuncMap = trieveGlobalFuncMap(globalThis);
-
+  let globalFuncMap = retrieveGlobalFuncMap(globalThis);
 
   if (object === undefined) {
     return '_@_undefined_@_';
@@ -43,7 +47,6 @@ function serialize(object, seenObjects = new Map(), path = '') {
     return JSON.stringify(object);
   }
   if (typeof(object) === 'function') {
-    console.log('objectname', object.name);
     if (object.name !== undefined && globalFuncMap.has(object.name)) {
       const globalFunc = globalFuncMap.get(object.name);
       if (globalFunc === object) {
@@ -66,7 +69,7 @@ function serialize(object, seenObjects = new Map(), path = '') {
     seenObjects.set(object, objPath);
     const objCopy = Array.isArray(object) ? [] : {};
     for (const key in object) {
-      if(object.hasOwnProperty(key)){
+      if (object.hasOwnProperty(key)) {
         objCopy[key] = serialize(object[key], seenObjects, `${objPath}.${key}`);
       }
     }
@@ -79,7 +82,7 @@ function serialize(object, seenObjects = new Map(), path = '') {
 
 
 function deserialize(string, createdObjects = new Map(), path = '') {
-  let globalFuncMap = trieveGlobalFuncMap(globalThis);
+  let globalFuncMap = retrieveGlobalFuncMap(globalThis);
 
   if (string === '_@_undefined_@_' ) {
     return undefined;
@@ -124,7 +127,7 @@ function deserialize(string, createdObjects = new Map(), path = '') {
   const objPath = path || `Root`;
   createdObjects.set(objPath, obj);
   for (const key in obj) {
-    if(obj.hasOwnProperty(key)){
+    if (obj.hasOwnProperty(key)) {
       obj[key] = deserialize(obj[key], createdObjects, `${objPath}.${key}`);
     }
   }
